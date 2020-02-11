@@ -1,0 +1,319 @@
+RAC 설치 대략적인 메뉴얼
+
+
+
+
+12c 1r의 특징
+기본적으로 cpu 1core 이상
+VOTE 그룹 : 크기 5m이상(확인 필요)
+RAM : 최소 4g 이상 (8g로 설정) 
+
+제품키 : D2N9P-3P6X9-2R39C-7RTCD-MDVJX
+* 네트워크 추가
+VMWare에서 네트워크 추가한다(각 노드의 IP로 설정)
+- Virtual Network Editor에서  Add Network버튼으로 추가하는데 
+예) 192.168.137.0 (기본)
+    192.168.200.0 (추가1)
+    192.168.201.0 (추가2)
+단, use Local DHCP는 체크해제한다.
+
+- 그리고 Edit Virtual mashine settings에서 설정
+network adapter를 추가한다.
+단 customer ~ 체크해서 아까 설정한 network를 추가로 설정한다.
+
+
+****** window 킴
+네트워크 센터로 들어가서
+- 두개의 네트워크 명을 변경한다.(Ethernet0말고)
++두개의 명을 Public, Private을 변경하고 
++각 IP4를 DHCP 설정을 체크해제하고 아까 설정한 각 노드의 IP로 설정 
+다, DNS 서버 주소를 127.0.0.1로 설정한다.
+
+* 컴퓨터 명 변경
+내컴퓨터 아이콘을 오른쪽버튼으로 속성 눌려서 설정페이지에 들어간다.
++컴퓨터 이름, 도메인~~ 쪽에서 설정변경을 클릭한다.
++ 변경 버튼을 클릭해서 컴퓨터이름을 변경(예:RAC1)하고 작업그룹을 RAC로 변경
+설정 후 -> 나중에 다시시작 클릭
+-> hosts파일과 동일해야함!!!!
+
+
+**** 보완 설정
+- cmd 창에서 secpol 작성
+- 로컬정책 -> 보안옵션 -> 사용자 계정 컨트롤 : 관리자 승인모드에서 관리자에 대한 권한 상승 확인방법 설정 (User Account Control : Behavior of the elevation prompt for administrators in Admin Approval Mode) -> 권한 상승전에 확인 안함 선택( Elevate without prompting.)
+
+**** 레지스트리 설정
+- cmd 창에서 regedit 작성
+- HKEY_LOCAL_MACHINE->  SOFTWARE -> Microsoft -> Windows -> currentVe~ -> policies -> system -> 새로만들기 -> DWORD(32 비트) -> LocalAccountTokenFilterPolicy -> 값 데이터를 1로 설정한다.
+
+
+- HKEY_LOCAL_MACHINE -> SYSTEM -> CurrentColtrolSet -> Services -> TCPIP6 -> Prarameter -> 새로만들기 -> DWORD(32 비트) -> DisabledComponents 이름과 값이 ffffffff 설정
+
+- HKEY_LOCAL_MACHINE -> SYSTEM -> CurrentColtrolSet -> Services -> Tcpip -> Prarameter -> 새로만들기 -> DWORD(32 비트) -> DisableDHCPMediaSense 이름과 값이 1 설정
+
+- HKEY_LOCAL_MACHINE -> SYSTEM -> CurrentColtrolSet -> Services -> SharedAccess -> Prarameter -> FirewallPolicy ->  DomainProfile -> EnableFirewall 값을 0으로 변경
+
+
+- HKEY_LOCAL_MACHINE -> SYSTEM -> CurrentColtrolSet -> Services -> SharedAccess -> Prarameter -> FirewallPolicy ->  PublicProfile -> EnableFirewall 값을 0으로 변경
+
+
+- HKEY_LOCAL_MACHINE -> SYSTEM -> CurrentColtrolSet -> Services -> SharedAccess -> Prarameter -> FirewallPolicy ->  StandardProfile -> EnableFirewall 값을 0으로 변경
+
+
+*****현재 설정한 내용을 적용을 위해 다시시작
+서버 관리자 -> 메인창에서 역할 및 기능 추가  클릭 -> 계속 next하다가 서버역할에서 DNS 서버 선택하고 나머지도 next후 설치한다.
+
+***DNS 서버 설정
+DNS 관리자로 들어가서 NODE1(서버명)에서 정방향 조회영역을 우측클릭으로 새영역 생성 -> 주영역 체크 -> 영역 이름을 oracle54.com으로 설정후 나머지는 그냥 next 한다.
+
+- 정방향 조회영역-> oracle54.com에서 우측 클릭으로 새호스트 추가 이름에 scan IP주소192.168.200.52 과 192.168.200.62 로 설정
+
+
+****  hosts 파일 설정
+window-> system32 -> Drivers -> etc -> hosts파일을 연다
+---------------밑에 
+127.0.0.1 localhost
+::1 localhost
+
+192.168.200.50 rac1
+192.168.200.60 rac2
+
+192.168.200.51 rac1-vip
+192.168.200.61 rac2-vip
+
+192.168.201.50 rac1-priv
+192.168.201.60 rac2-priv
+
+-------------------
+
+
+이후 cmd 창으로 ping 찍기
+ping rac1
+pring rac1-priv
+ 
+nslookup scan.oracle54.com -> 설정확인
+
+**** vmware 종료 한다.
+현재까지 만든 vmware를 clone으로 만들어 준다.
+vmware에서 잘보면 있음~~~~
+이름 node2로 설정
+
+
+
+
+
+***** node2를 킨다.
+네트워크 설정을 들어가서 각 네트워크 재설정
+private : 192.168.201.60
+public : 192.168.200.60
+ethernet : 192.168.137,21
+
+* 컴퓨터 이름 변경
+node2로 설정
+설정후 컴퓨터 다시 시작
+
+* ping 찍어보기
+ping rac1
+ping rac2
+ping rac1-priv
+ping rac2-priv
+pring node1
+
+**********
+
+
+****** disk 추가
+node1 에서 edit settings 클릭해서 
+add클릭 -> harddisk -> SCSI 와 mode에서 independent를체크하고 Persistent클릭 -> next -> size 1 설정 -> allocate disk space row 체크하고 store virtual disk as a single file 설정 -> 위치를 해당 virtual 머신과 다른 위치에 설정해서 DISK폴터에 지정한다. asmdisk01.vmdk 로 생성~~~
+asmdisk01.vmdk size 1 SCSI 1:0
+asmdisk02.vmdk size 1 SCSI 1:1
+asmdisk03.vmdk size 1 SCSI 1:2
+asmdisk04.vmdk size 5 SCSI 1:3
+asmdisk05.vmdk size 5 SCSI 1:4
+asmdisk06.vmdk size 5 SCSI 1:5
+
+
+* node 2 disk 설정
+이전과 다르게 edit settings에서 add 하고 harddisk 선택후 next하다가 create a new~ 대신 Use an existing virtual disk 선택하고 next -> 이전에 생성한 disk의 위치명을 넣어준다. asmdisk01.vmdk ~ asmdisk06.vmdk -> 밑에 indepedent 체크하고 Persistent 선택하고 넥스트로 생성 
+SCSI 1:0 ~ SCSI 1:5 까지 설정해 준다.
+
+
+**** 추가 vmware 설정
+node1,node2의 파일에 vmx파일의 내용 끝에 추가
+-----------------------------------------
+disk.locking = "FALSE"
+diskLib.dataCacheMaxSize = "0"
+diskLib.dataCasheMaxReadAheadSize = "0"
+diskLib.dataCacheMinReadAheadSize = "0"
+diskLib.dataCachePageSize = "4096"
+diskLib.maxUnsyncedWrites = "0"
+scsil.sharedBus = "virtual"
+
+******* partition 설정
+ node1 , node 2 전부 키기
+-node1에서 cmd 창켜서 diskpart 작성
+list disk
+
+------------
+select disk 1
+online disk
+attributes disk clear readonly -> 디스크 특성을 지움
+create partition extended -> 파티션 생성
+create partition logical
+-------------
+-> 위의 작업을 disk 6까지 진행 후
+exit
+
+-node2에서 cmd 창에서 diskpart 작성
+list disk
+
+--------
+select disk 1 
+online disk
+select disk 1
+attributes disk clear readonly
+-> 1~ 6까지반복
+list volume 
+select volume 4
+remove letter f
+select volume 5
+remove letter g
+select volume 6
+remove letter h
+select volume 7
+remove letter i
+select volume 8
+remove letter j
+select volume 9
+remove letter k
+list volume
+exit
+ 
+
+
+*****  DB 설치
+1) grid 설치
+grid 설치 파일로 이동 하여 asmtool에 asmtoolg 클릭
+next후 해당 DISK를 파티션을 지정한다.
+-> 1g짜리 묶어서 VOTE로 지정
+-> 5g짜리 2개 묶어서 DATA로 지정
+-> 5g짜리 하나를 FRA로 지정
+
+2) 설치
+- 
+clsuster name : crs
+scna name : scan.oracle54.com
+scan 1521
+configure GNS : 체크해제
+
+-next
+host name : rac1
+virtual IP name  : rac1-vip
+
+host name : rac2
+virtual IP name  : rac2-vip
+
+- next
+- (ASM)선택 후 next
+
+-Disk Group Name : OCR_VOTE
+VOTE로 설정한 Disk 체크
+next
+
+-Use same password for these accounts 체크
+비밀번호 : oracle
+
+-Do Not use Intelligent Platform Managment Interface (IPMI) 체크후 next
+
+-next
+오랜 기다림......
+-설치 완료 후 close
+
+----------------------------asmca
+cmd 상에서
+cd C:\app\11.2.0\grid\BIN
+asmca
+진행
+
+Disk Groupts 탭에서 create  버튼 클릭
+Disk Group Name : DATA
+Disk Path에 DATA라고 들어간 disk 2개 체크 후 OK 클릭
+
+Disk Group 하나더 생성
+Disk Group Name : FRA
+Reduncacy : Extermal (None) 체크
+하나 남은 DISK 체크  후 ok 클릭
+
+
+-----db install
+1,2 파일 압축 해제하고 setup.ext실행
+
+-check해제하고 next
+-install database software only 체크
+-select all 클릭해서 모든 Instance 선택
+- Enterprise Edition 체크 후 next
+- next
+- finish
+- 마지막 화면에서 C:\app\Administrator\product\11.2.0\dbhome_1\BIN로 이동해서 selecthome 실행
+
+
+---------------- dbca
+cmd
+cd C:\app\Administrator\product\11.2.0\dbhome_1\BIN
+dbca
+
+-Oracle Real Application Cluster database 체크 후 next
+- create  a Database 체크 후 next
+- next
+- Global Database Name : orcl 입력
+  select all 버튼 클릭 후  next
+- next 
+- Use the Same 클릭 후 oracle로 비밀번호 설정
+- next 후 화면에 뜬 ASM 비밀번호를 oracle로 설정
+-  next
+- smaple schemas 체크 후 next
+- Character Sets 에 Choose from the list of character sets 체크 후 K~~~~~~949 선택
+- next 계속 ~~ Finish 선택 후 OK 선택
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
